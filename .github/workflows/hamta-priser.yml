@@ -1,0 +1,34 @@
+name: Hämta elpriser
+
+on:
+  schedule:
+    # Tiderna är i UTC. Svensk sommartid = UTC+2, vintertid = UTC+1.
+    - cron: '5 22 * * *'   # strax efter midnatt svensk tid: nytt dygn
+    - cron: '20 11 * * *'  # runt lunch: morgondagens priser brukar komma då
+    - cron: '20 12 * * *'  # en gång till, om de var sena
+    - cron: '20 15 * * *'  # eftermiddag, som säkerhet
+  workflow_dispatch:        # gör att du kan köra jobbet manuellt med en knapp
+
+permissions:
+  contents: write
+
+jobs:
+  hamta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hämta priserna
+        run: node hamta-priser.js
+
+      - name: Spara om något ändrats
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --staged --quiet; then
+            echo "Inga nya priser, inget att spara."
+          else
+            git commit -m "Uppdaterade elpriser $(date -u +%Y-%m-%d\ %H:%M) UTC"
+            git push
+          fi
